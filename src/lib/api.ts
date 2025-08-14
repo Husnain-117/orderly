@@ -1,4 +1,9 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || 'https://orderly-backend-three.vercel.app/';
+export const API_BASE = (import.meta.env.VITE_API_BASE || 'https://orderly-backend-three.vercel.app').replace(/\/+$/, '');
+
+function joinUrl(path: string): string {
+  if (!path) return API_BASE;
+  return path.startsWith('/') ? `${API_BASE}${path}` : `${API_BASE}/${path}`;
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const isFormData = options && typeof options === 'object' && options.body instanceof FormData;
@@ -6,7 +11,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
   };
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(joinUrl(path), {
     credentials: 'include',
     ...options,
     headers,
@@ -203,7 +208,7 @@ export const api = {
     async image(file: File) {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`${API_BASE}/upload/image`, {
+      const res = await fetch(joinUrl('/upload/image'), {
         method: 'POST',
         body: fd,
         credentials: 'include',

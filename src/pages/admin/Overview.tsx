@@ -36,7 +36,7 @@ export default function Overview() {
           <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="card-hover"><CardHeader><CardTitle>Orders/day</CardTitle></CardHeader><CardContent className="text-2xl font-head"><Counter to={98} /></CardContent></Card>
             <Card className="card-hover"><CardHeader><CardTitle>Active Shops</CardTitle></CardHeader><CardContent className="text-2xl font-head"><Counter to={245} /></CardContent></Card>
-            <Card className="card-hover"><CardHeader><CardTitle>Total Sales</CardTitle></CardHeader><CardContent className="text-2xl font-head">₹<Counter to={1250} /></CardContent></Card>
+            <Card className="card-hover"><CardHeader><CardTitle>Total Sales</CardTitle></CardHeader><CardContent className="text-2xl font-head">Rs<Counter to={1250} /></CardContent></Card>
             <Card className="card-hover"><CardHeader><CardTitle>Late Deliveries</CardTitle></CardHeader><CardContent className="text-2xl font-head"><Counter to={4} /></CardContent></Card>
           </section>
 
@@ -61,7 +61,7 @@ export default function Overview() {
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">ORD-{3000 + i}</span>
-                    <span className="font-medium">₹{Math.round(200 + Math.random() * 2000)}</span>
+                    <span className="font-medium">Rs{Math.round(200 + Math.random() * 2000)}</span>
                   </div>
                 ))}
               </CardContent>

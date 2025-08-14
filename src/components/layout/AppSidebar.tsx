@@ -1,55 +1,89 @@
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { ShoppingCart, Clock, User, LogOut, Store, LayoutGrid, Boxes } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export type NavItem = { title: string; url: string; icon: React.ComponentType<any> };
 
-export const AppSidebar = ({ items }: { items: NavItem[] }) => {
+export const AppSidebar = ({ items, cartInfo }: { items: NavItem[]; cartInfo?: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
   const currentPath = location.pathname;
   const isActive = (path: string) => currentPath === path;
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end className={({ isActive }) => isActive ? "bg-muted text-primary font-medium" : "hover:bg-muted/50"}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+    <nav className="w-full bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <Store className="w-8 h-8 text-emerald-600" />
+            <span className="text-xl font-bold text-slate-800">Orderly</span>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="flex items-center gap-1">
+            {items.filter(item => item.url !== '#').map((item) => (
+              <NavLink 
+                key={item.title}
+                to={item.url} 
+                end 
+                className={({ isActive }) => 
+                  `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive 
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/20" 
+                      : "text-slate-700 hover:text-emerald-600 hover:bg-emerald-50"
+                  }`
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Right Side - Cart, Profile, Logout */}
+          <div className="flex items-center gap-3">
+            
+            
+            {/* Profile (role-based) */}
+            <NavLink 
+              to={user?.role === 'distributor' ? '/wholesale/profile' : '/shop/profile'} 
+              className="p-2 text-slate-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200"
+            >
+              <User className="h-5 w-5" />
+            </NavLink>
+            
+            {/* Logout */}
+            <button 
+              className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+              onClick={async () => {
+                try {
+                  await signOut();
+                } catch {}
+                localStorage.removeItem('joinAs');
+                navigate('/login');
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
   );
 };
 
 export const shopItems: NavItem[] = [
-  { title: "Quick Order", url: "/shop/dashboard", icon: (props: any) => <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4"/><circle cx="7" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg> },
-  { title: "Order History", url: "/shop/orders", icon: (props: any) => <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg> },
+  { title: "Dashboard", url: "/shop/dashboard", icon: LayoutGrid },
+  { title: "Cart", url: "/shop/cart", icon: ShoppingCart },
+  { title: "Orders", url: "/shop/orders", icon: Clock },
 ];
 
 export const wholesaleItems: NavItem[] = [
-  { title: "Orders", url: "/wholesale/orders", icon: (props: any) => <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18"/></svg> },
-  { title: "Inventory", url: "/wholesale/inventory", icon: (props: any) => <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> },
+  { title: "Dashboard", url: "/wholesale/dashboard", icon: LayoutGrid },
+  { title: "Inventory", url: "/wholesale/inventory", icon: Boxes },
 ];
 
 export const adminItems: NavItem[] = [

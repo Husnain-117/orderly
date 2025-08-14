@@ -1,73 +1,142 @@
-# Welcome to your Lovable project
+# Orderly - B2B Ordering Platform
 
-## Project info
+## Project Overview
 
-**URL**: https://lovable.dev/projects/76de6a7a-37b8-4c38-8431-45c7a7830fd0
+Orderly is a comprehensive B2B ordering platform that connects shopkeepers and wholesalers, streamlining the ordering process with modern web technologies.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- **Shopkeeper Dashboard**: Quick ordering and order history
+- **Wholesaler Portal**: Inventory management and order fulfillment
+- **Admin Panel**: System oversight and user management
+- **Real-time Updates**: Live order tracking and notifications
+- **Mobile-First Design**: Responsive interface for all devices
 
-**Use Lovable**
+## Development Setup
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/76de6a7a-37b8-4c38-8431-45c7a7830fd0) and start prompting.
+**Local Development**
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Clone this repository and set up your local development environment:
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
 Follow these steps:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd orderly
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Tech Stack
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This project is built with modern web technologies:
 
-**Use GitHub Codespaces**
+- **Vite** - Fast build tool and dev server
+- **TypeScript** - Type-safe JavaScript
+- **React** - UI library with hooks
+- **shadcn/ui** - Modern component library
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Router** - Client-side routing
+- **Lucide React** - Beautiful icons
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ui/             # shadcn/ui components
+│   └── layout/         # Layout components
+├── pages/              # Page components
+│   ├── shop/           # Shopkeeper pages
+│   ├── wholesale/      # Wholesaler pages
+│   └── admin/          # Admin pages
+└── hooks/              # Custom React hooks
+```
 
-This project is built with:
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Build the project for production:
 
-## How can I deploy this project?
+```sh
+npm run build
+```
 
-Simply open [Lovable](https://lovable.dev/projects/76de6a7a-37b8-4c38-8431-45c7a7830fd0) and click on Share -> Publish.
+The built files will be in the `dist/` directory, ready for deployment to any static hosting service.
 
-## Can I connect a custom domain to my Lovable project?
+## Available Scripts
 
-Yes, you can!
+Run these from the project root:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- `npm run dev` — Start Vite dev server (hot reload) on port 8080
+- `npm run build` — Production build
+- `npm run build:dev` — Development-mode build
+- `npm run preview` — Preview the production build locally
+- `npm run lint` — Lint the codebase
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Environment Variables
+
+Create a `.env` file in the project root if you need runtime configuration. Common examples:
+
+```
+VITE_API_BASE_URL=https://api.example.com
+VITE_ENABLE_MOCKS=false
+```
+
+Access them in code via `import.meta.env.VITE_*`.
+
+## Route Map
+
+- `/register` — Registration
+- `/login` — Login
+- `/shop/dashboard` — Shopkeeper dashboard (quick order)
+- `/shop/orders` — Shopkeeper order history
+- `/shop/profile` — Shopkeeper profile
+- `/wholesale/orders` — Wholesaler orders management
+- `/wholesale/dashboard` — Distributor dashboard
+- `/wholesale/inventory` — Inventory management
+- `/admin/overview` — Admin overview
+
+## Design System
+
+Tailwind uses CSS variables defined in `src/index.css` and mapped in `tailwind.config.ts`.
+
+Primary palette (HSL and hex):
+
+- Primary: `hsl(152 41% 30%)` — #2D6A4F
+- Secondary: `hsl(153 38% 41%)` — #40916C
+- Accent (CTA): `hsl(43 100% 70%)` — #FFD166
+- Destructive: `hsl(355 78% 56%)` — #E63946
+- Info: `hsl(200 100% 36%)` — #0077B6
+- Background: `hsl(210 17% 98%)` — #F8F9FA
+- Foreground: `hsl(222 25% 12%)`
+- Border/Input: `hsl(214 32% 91%)`
+
+See variables in `src/index.css` for sidebar and other tokens.
+
+## Troubleshooting
+
+- __Port already in use (8080)__: Stop the other process or change `server.port` in `vite.config.ts`.
+- __Cannot find module 'papaparse'__: Install it with `npm i papaparse` (and optionally `npm i -D @types/papaparse`).
+- __Alias '@' not working__: Ensure `vite.config.ts` has `alias: { '@': path.resolve(__dirname, './src') }` and restart dev server.
+- __Styling not applied__: Confirm Tailwind content globs in `tailwind.config.ts` include `./src/**/*.{ts,tsx}` and that `src/index.css` is imported in `src/main.tsx`.
+- __TypeScript errors after dependency changes__: Try deleting `node_modules` and `package-lock.json`, then `npm install`.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Commit changes: `git commit -m "feat: add your feature"`
+4. Push the branch and open a PR
+
+## License
+
+Copyright (c) 2025 Orderly. All rights reserved.

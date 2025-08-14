@@ -1,4 +1,5 @@
-export const API_BASE = (import.meta.env.VITE_API_BASE || 'https://orderly-backend-three.vercel.app').replace(/\/+$/, '');
+// In production on Vercel, default to same-origin '/api' so rewrites route to serverless backend without CORS
+export const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '');
 
 function joinUrl(path: string): string {
   if (!path) return API_BASE;

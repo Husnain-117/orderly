@@ -87,11 +87,11 @@ Run these from the project root:
 Create a `.env` file in the project root if you need runtime configuration. Common examples:
 
 ```
-VITE_API_BASE_URL=https://api.example.com
+VITE_API_BASE=https://orderly-backend-three.vercel.app/
 VITE_ENABLE_MOCKS=false
 ```
 
-Access them in code via `import.meta.env.VITE_*`.
+The app reads the API base URL from `import.meta.env.VITE_API_BASE`. Access envs in code via `import.meta.env.VITE_*`.
 
 ## Route Map
 

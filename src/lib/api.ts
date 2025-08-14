@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'https://orderly-backend-three.vercel.app/';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const isFormData = options && typeof options === 'object' && options.body instanceof FormData;

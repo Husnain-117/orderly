@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Vite/Build caches
+.vite
+coverage
+
+# OS/Tooling
+Thumbs.db
+.vercel
+.netlify

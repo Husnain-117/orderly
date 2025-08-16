@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://orderly-backend-three.vercel.app/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

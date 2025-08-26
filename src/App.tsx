@@ -14,10 +14,17 @@ import Register from "./pages/register";
 import Login from "./pages/login";
 import DistributorDashboard from "./pages/wholesale/Distributor_dashboard";
 import Inventory from "./pages/wholesale/inventory";
+import DistributorAnalytics from "./pages/wholesale/Analytics";
 import WholesaleProfile from "./pages/wholesale/Profile";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { AuthProvider } from "@/context/AuthContext";
 import AuthCallback from "./pages/auth/Callback";
+import LinkDistributor from "./pages/sales/LinkDistributor";
+import SalespersonDashboard from "./pages/sales/Dashboard";
+import SalesRequests from "./pages/wholesale/SalesRequests";
+import SalesLinkGuard from "@/components/auth/SalesLinkGuard";
+import { NotificationsProvider } from "@/context/NotificationsContext";
+import ShopAnalytics from "./pages/shop/Analytics";
 
 
 const queryClient = new QueryClient();
@@ -28,7 +35,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthProvider>
-        <BrowserRouter>
+        <NotificationsProvider>
+          <BrowserRouter>
           <Routes>
             {/* Redirect base URL to login */}
             <Route path="/" element={<Navigate to="/login" replace />} />
@@ -45,6 +53,55 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Salesperson */}
+            <Route
+              path="/sales/link-distributor"
+              element={
+                <ProtectedRoute>
+                  <LinkDistributor />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales/dashboard"
+              element={
+                <ProtectedRoute>
+                  <SalesLinkGuard>
+                    <ShopDashboard />
+                  </SalesLinkGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales/cart"
+              element={
+                <ProtectedRoute>
+                  <SalesLinkGuard>
+                    <AddToCart />
+                  </SalesLinkGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales/orders"
+              element={
+                <ProtectedRoute>
+                  <SalesLinkGuard>
+                    <ShopOrders />
+                  </SalesLinkGuard>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/sales/profile"
+              element={
+                <ProtectedRoute>
+                  <SalesLinkGuard>
+                    <ShopProfile />
+                  </SalesLinkGuard>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/shop/cart"
               element={
@@ -58,6 +115,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ShopOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/shop/analytics"
+              element={
+                <ProtectedRoute>
+                  <ShopAnalytics />
                 </ProtectedRoute>
               }
             />
@@ -87,6 +152,14 @@ const App = () => (
               }
             />
             <Route
+              path="/wholesale/analytics"
+              element={
+                <ProtectedRoute>
+                  <DistributorAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/wholesale/inventory"
               element={
                 <ProtectedRoute>
@@ -99,6 +172,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <WholesaleProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wholesale/sales-requests"
+              element={
+                <ProtectedRoute>
+                  <SalesRequests />
                 </ProtectedRoute>
               }
             />
@@ -115,6 +196,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </NotificationsProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

@@ -12,7 +12,7 @@ import { api } from "@/lib/api"
 const Register = () => {
   const [email, setEmail] = useState("")
   const [organizationName, setOrganizationName] = useState("")
-  const [joinAs, setJoinAs] = useState<"distributor" | "shopkeeper" | "">("")
+  const [joinAs, setJoinAs] = useState<"distributor" | "shopkeeper" | "salesperson" | "">("")
   const [password, setPassword] = useState("")
   const [otpSent, setOtpSent] = useState(false)
   const [otp, setOtp] = useState("")
@@ -32,8 +32,11 @@ const Register = () => {
   }, [otpSent, resendIn])
 
   const sendOtp = async () => {
-    if (!email || !organizationName || !joinAs || !password) {
+    if (!email || !joinAs || !password) {
       return toast.error("Please fill in all fields")
+    }
+    if (joinAs === 'distributor' && !organizationName) {
+      return toast.error("Organization name is required for distributors")
     }
 
     if (password.length < 6) {
@@ -96,7 +99,8 @@ const Register = () => {
       toast.success("Account created!")
       const role = reg.user?.role || joinAs
       if (role === "distributor") navigate("/wholesale/dashboard")
-      else navigate("/shop/dashboard")
+      else if (role === "shopkeeper") navigate("/shop/dashboard")
+      else navigate("/sales/link-distributor")
     } catch (e: any) {
       const msg = String(e?.message || "")
       if (msg.toLowerCase().includes("already exists")) {
@@ -181,7 +185,7 @@ const Register = () => {
                 <Users className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-600 w-5 h-5 z-10" />
                 <Select
                   value={joinAs}
-                  onValueChange={(value: "distributor" | "shopkeeper") => setJoinAs(value)}
+                  onValueChange={(value: "distributor" | "shopkeeper" | "salesperson") => setJoinAs(value)}
                   disabled={otpSent}
                 >
                   <SelectTrigger
@@ -192,6 +196,7 @@ const Register = () => {
                   <SelectContent>
                     <SelectItem value="distributor">Distributor</SelectItem>
                     <SelectItem value="shopkeeper">Shopkeeper</SelectItem>
+                    <SelectItem value="salesperson">Salesperson</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

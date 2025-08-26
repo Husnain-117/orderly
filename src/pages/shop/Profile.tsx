@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SEO } from "@/components/SEO";
 import AppLayout from "@/components/layout/AppLayout";
-import { AppSidebar, shopItems } from "@/components/layout/AppSidebar";
+import { AppSidebar, shopItems, salespersonItems } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Edit, Camera, User, Mail, Building, Upload, Phone, MapPin } from "lucide-react";
 import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 // use shared shopItems from AppSidebar
 
@@ -25,6 +26,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile>({
     email: '',
     name: '',
@@ -119,7 +121,7 @@ const Profile = () => {
   if (loading && !profile.email) {
     return (
       <AppLayout>
-        <AppSidebar items={shopItems} />
+        <AppSidebar items={user?.role === 'salesperson' ? salespersonItems : shopItems} />
         <main className="w-full max-w-4xl mx-auto px-6 py-4">
           <div className="text-center py-8">Loading profile...</div>
         </main>
@@ -131,7 +133,7 @@ const Profile = () => {
     <>
       <SEO title="Profile • Orderly" description="Manage your profile and account settings." />
       <AppLayout>
-        <AppSidebar items={shopItems} />
+        <AppSidebar items={user?.role === 'salesperson' ? salespersonItems : shopItems} />
         <main className="w-full max-w-4xl mx-auto px-6 py-4">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-800 mb-2">Profile</h1>

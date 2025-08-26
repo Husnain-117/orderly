@@ -100,6 +100,33 @@ export const api = {
         body: JSON.stringify({ orderId }),
       });
     },
+    getInvoiceHtml(orderId: string) {
+      return request<{ ok: boolean; html: string }>(`/orders/invoice/${orderId}`);
+    },
+    invoicePdfUrl(orderId: string) {
+      return joinUrl(`/orders/invoice/${orderId}/pdf`);
+    },
+    async downloadInvoicePdf(orderId: string) {
+      const url = joinUrl(`/orders/invoice/${orderId}/pdf`);
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to download invoice PDF');
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `invoice-${orderId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(blobUrl);
+      return true;
+    },
+    sendInvoiceEmail(orderId: string, payload?: { to?: string }) {
+      return request<{ ok: boolean; message: string; to: string }>(`/orders/invoice/${orderId}/send`, {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      });
+    },
     update(orderId: string, items: Array<{ productId: string; qty: number }>) {
       return request<{ ok: boolean; order: any }>(`/orders/cart`, {
         method: 'PUT',
@@ -111,6 +138,27 @@ export const api = {
         method: 'DELETE',
         body: JSON.stringify({ orderId }),
       });
+    },
+  },
+  notifications: {
+    list(params?: { unread?: boolean }) {
+      const usp = new URLSearchParams();
+      if (typeof params?.unread !== 'undefined') usp.set('unread', String(params.unread));
+      const qs = usp.toString();
+      const path = `/notifications${qs ? `?${qs}` : ''}`;
+      return request<{ ok: boolean; notifications: Array<{ id: string; userId: string; type: string; title: string; message: string; data?: any; read: boolean; createdAt: string }> }>(path);
+    },
+    markRead(id: string) {
+      return request<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST' });
+    },
+    markUnread(id: string) {
+      return request<{ ok: boolean }>(`/notifications/${id}/unread`, { method: 'POST' });
+    },
+    markAllRead() {
+      return request<{ ok: boolean }>(`/notifications/mark-all-read`, { method: 'POST' });
+    },
+    clearAll() {
+      return request<{ ok: boolean }>(`/notifications/clear`, { method: 'DELETE' });
     },
   },
   sendOtp(email: string) {
@@ -131,8 +179,8 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
-  login(payload: { email: string; password: string }) {
-    return request<{ ok: boolean; user: { id: string; email: string; role?: string | null } }>(`/auth/login`, {
+  login(payload: { email: string; password: string; role: 'distributor' | 'shopkeeper' | 'salesperson' }) {
+    return request<{ ok: boolean; user: { id: string; email: string; role?: string | null }, salespersonLinkStatus?: { state: string; distributorId?: string; requestId?: string } }>(`/auth/login`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -163,6 +211,38 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+  salesperson: {
+    requestLink(distributorEmail: string) {
+      return request<{ ok: boolean; request: { id: string; status: string; distributorId: string } }>(`/auth/salesperson/link-request`, {
+        method: 'POST',
+        body: JSON.stringify({ distributorEmail }),
+      });
+    },
+    linkStatus() {
+      return request<{ ok: boolean; status: { state: 'unlinked' | 'pending' | 'approved' | 'rejected'; distributorId?: string; requestId?: string } }>(`/auth/salesperson/link-status`);
+    },
+  },
+  distributor: {
+    salesRequests() {
+      return request<{ ok: boolean; requests: Array<{ id: string; salespersonId: string; distributorId: string; status: string; createdAt: string; updatedAt: string }> }>(
+        `/auth/distributor/sales-requests`
+      );
+    },
+    approveSalesRequest(id: string) {
+      return request<{ ok: boolean; request: any }>(`/auth/distributor/sales-requests/${id}/approve`, { method: 'POST' });
+    },
+    rejectSalesRequest(id: string) {
+      return request<{ ok: boolean; request: any }>(`/auth/distributor/sales-requests/${id}/reject`, { method: 'POST' });
+    },
+    salespersons() {
+      return request<{ ok: boolean; salespersons: Array<{ id: string; salespersonId: string; distributorId: string; status: string; createdAt: string; updatedAt: string }> }>(
+        `/auth/distributor/salespersons`
+      );
+    },
+    unlinkSalesperson(salespersonId: string) {
+      return request<{ ok: boolean; unlink: any }>(`/auth/distributor/salespersons/${salespersonId}`, { method: 'DELETE' });
+    },
   },
   products: {
     list() {
@@ -217,6 +297,28 @@ export const api = {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || 'upload failed');
       return data as { ok: boolean; url: string };
+    },
+  },
+  analytics: {
+    distributor: {
+      summary(range: '7d' | '30d' | '90d' | string = '30d') {
+        return request<{ ok: boolean; rangeDays: number; totals: { orders: number; items: number; revenue: number; avgOrderValue: number }; trend: Array<{ date: string; orders: number; items: number; revenue: number }> }>(`/analytics/distributor/summary?range=${encodeURIComponent(range)}`);
+      },
+      topProducts(range: string = '30d', limit = 10) {
+        return request<{ ok: boolean; items: Array<{ productId: string; name: string; qty: number; revenue: number }> }>(`/analytics/distributor/top-products?range=${encodeURIComponent(range)}&limit=${limit}`);
+      },
+      topShops(range: string = '30d', limit = 10) {
+        return request<{ ok: boolean; shops: Array<{ shopId: string; name: string; orders: number; revenue: number }> }>(`/analytics/distributor/top-shops?range=${encodeURIComponent(range)}&limit=${limit}`);
+      },
+    },
+    shop: {
+      summary(month?: string) {
+        const q = month ? `?month=${encodeURIComponent(month)}` : '';
+        return request<{ ok: boolean; month: string; totals: { orders: number; items: number; spend: number; avgOrderValue: number }; trend: Array<{ date: string; orders: number; items: number; spend: number }> }>(`/analytics/shop/summary${q}`);
+      },
+      frequentItems(months = 3, limit = 10) {
+        return request<{ ok: boolean; items: Array<{ productId: string; name: string; count: number; qty: number; spend: number }> }>(`/analytics/shop/frequent-items?months=${months}&limit=${limit}`);
+      },
     },
   },
 };

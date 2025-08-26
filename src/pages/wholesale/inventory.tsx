@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
 import AppLayout from "@/components/layout/AppLayout";
 import { AppSidebar, wholesaleItems } from "@/components/layout/AppSidebar";
-import { Upload, Plus, Package, AlertCircle, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
+import { Upload, Plus, Package, AlertCircle, Pencil, Trash2, Image as ImageIcon, Search } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, API_BASE } from "@/lib/api";
 
@@ -29,7 +29,16 @@ const Inventory: React.FC = () => {
     { sku: "SKU-1004", name: "Organic Honey 500g", stock: 25, price: 180 },
   ]);
   const [csvImportedOnce, setCsvImportedOnce] = React.useState(false);
+  const [csvParsing, setCsvParsing] = React.useState(false);
   const { toast } = useToast();
+
+  
+
+  // Helper: resolve absolute vs relative URLs
+  const resolveUrl = React.useCallback((u?: string | null) => {
+    if (!u) return "";
+    return u.startsWith("http") ? u : `${API_BASE}${u}`;
+  }, []);
 
   // Products from backend
   const qc = useQueryClient();
@@ -51,6 +60,15 @@ const Inventory: React.FC = () => {
     onError: (e: any) => toast({ title: 'Import failed', description: e?.message || 'error', variant: 'destructive' }),
   });
   const products: Product[] = data?.products || [];
+  const [productQuery, setProductQuery] = React.useState("");
+  const visibleProducts = React.useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) =>
+      String(p.id).toLowerCase().includes(q) ||
+      String(p.name).toLowerCase().includes(q)
+    );
+  }, [products, productQuery]);
   const [selectedProduct, setSelectedProduct] = React.useState<Product | null>(null);
 
   // Create product form
@@ -67,7 +85,7 @@ const Inventory: React.FC = () => {
     try {
       const { url } = await api.upload.image(file);
       setDraft((d) => ({ ...d, image: url }));
-      setImagePreview(`${API_BASE}${url}`);
+      setImagePreview(resolveUrl(url));
       toast({ title: "Image uploaded" });
     } catch (e: any) {
       toast({ title: "Upload failed", description: e?.message || 'error', variant: 'destructive' });
@@ -136,6 +154,8 @@ const Inventory: React.FC = () => {
 
   // CSV section logic (unchanged behavior)
   const onCsv = (file: File) => {
+    setCsvParsing(true);
+    setCsvItems([]);
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -150,10 +170,15 @@ const Inventory: React.FC = () => {
           })
           .filter((r) => !!r.name);
         setCsvItems((prev) => [...prev, ...parsed]);
-        if (parsed.length > 0) setCsvImportedOnce(true);
-        toast({ title: "CSV imported", description: `${parsed.length} items added.` });
+        if (parsed.length > 0) {
+          setCsvImportedOnce(true);
+          toast({ title: "CSV parsed", description: `${parsed.length} row(s) ready to import.` });
+        } else {
+          toast({ title: "No rows found", description: "Please check your CSV headers (name, price, stock optional).", variant: "destructive" });
+        }
+        setCsvParsing(false);
       },
-      error: () => toast({ title: "Import failed", description: "Please check your CSV format.", variant: "destructive" }),
+      error: () => { setCsvParsing(false); toast({ title: "Import failed", description: "Please check your CSV format.", variant: "destructive" }); },
     });
   };
 
@@ -196,10 +221,12 @@ const Inventory: React.FC = () => {
                 <p className="mb-4 text-sm text-slate-600">Import multiple items at once. Required: name, price. Optional: stock, sku</p>
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,text/csv,application/vnd.ms-excel"
                   onChange={(e) => e.target.files?.[0] && onCsv(e.target.files[0])}
+                  disabled={csvParsing}
                   className="block w-full rounded-lg border border-slate-200 p-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
                 />
+                {csvParsing && <p className="mt-3 text-sm text-slate-500">Parsing CSV…</p>}
                 {csvImportedOnce && csvItems.length === 0 && (
                   <p className="mt-3 text-sm text-slate-500">No new products from CSV</p>
                 )}
@@ -261,7 +288,7 @@ const Inventory: React.FC = () => {
                         className="block w-full rounded-lg border border-slate-200 p-2 text-sm"
                       />
                       { (imagePreview || draft.image) && (
-                        <img src={imagePreview || `${API_BASE}${draft.image}`} alt="preview" className="h-12 w-12 rounded object-cover border" />
+                        <img src={imagePreview || resolveUrl(draft.image)} alt="preview" className="h-12 w-12 rounded object-cover border" />
                       )}
                     </div>
                   </div>
@@ -292,10 +319,21 @@ const Inventory: React.FC = () => {
           <section>
             <Card className="border-slate-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center text-lg font-semibold text-slate-800">
-                  <Package className="mr-2 h-5 w-5 text-emerald-600" />
-                  Products {isLoading ? '' : `(${products.length} items)`}
-                </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="flex items-center text-lg font-semibold text-slate-800">
+                    <Package className="mr-2 h-5 w-5 text-emerald-600" />
+                    Products {isLoading ? '' : `(${visibleProducts.length} / ${products.length})`}
+                  </CardTitle>
+                  <div className="relative w-full max-w-xs">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Search by Product ID or Name"
+                      value={productQuery}
+                      onChange={(e) => setProductQuery(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -316,13 +354,16 @@ const Inventory: React.FC = () => {
                           <TableCell colSpan={6} className="text-center py-8 text-slate-500">Loading...</TableCell>
                         </TableRow>
                       ) : (
-                        products.map((p) => (
+                        visibleProducts.map((p) => (
                           <TableRow key={p.id} className="border-slate-100 hover:bg-white">
                             <TableCell className="text-slate-800">
                               {editingId === p.id ? (
                                 <Input value={editDraft.name as string} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} />
                               ) : (
-                                <span className="font-medium text-slate-900">{p.name}</span>
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-slate-900">{p.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono">ID: {p.id}</span>
+                                </div>
                               )}
                             </TableCell>
                             <TableCell className={`text-right font-medium ${p.stock < 30 ? 'text-amber-600' : 'text-slate-800'}` }>
@@ -365,7 +406,7 @@ const Inventory: React.FC = () => {
                                   <span className="text-xs text-slate-500 truncate max-w-40">{(editDraft.image as string) ?? p.image ?? ''}</span>
                                 </div>
                               ) : (
-                                p.image ? <a href={`${API_BASE}${p.image}`} target="_blank" className="text-emerald-600 hover:underline">Image</a> : <span className="text-slate-400">—</span>
+                                p.image ? <a href={resolveUrl(p.image)} target="_blank" className="text-emerald-600 hover:underline">Image</a> : <span className="text-slate-400">—</span>
                               )}
                             </TableCell>
                             <TableCell className="text-slate-700 min-w-60">
@@ -491,7 +532,7 @@ const Inventory: React.FC = () => {
                   <div className="aspect-square bg-white border border-slate-200 rounded overflow-hidden flex items-center justify-center">
                     {selectedProduct.image ? (
                       <img
-                        src={`${API_BASE}${selectedProduct.image}`}
+                        src={resolveUrl(selectedProduct.image)}
                         alt={selectedProduct.name}
                         className="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-product.png'; }}

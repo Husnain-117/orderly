@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AppSidebar, shopItems } from "@/components/layout/AppSidebar";
+import { AppSidebar, shopItems, salespersonItems } from "@/components/layout/AppSidebar";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,11 +11,25 @@ import { SEO } from "@/components/SEO";
 import { ShoppingCart, User, ListFilter, SortAsc, SortDesc, Store, Package, TrendingUp, Star, Filter } from "lucide-react";
 import { flyToCart } from "@/utils/flyToCart";
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { useTheme } from "next-themes";
 import { Object as FabricObject } from "fabric";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ShopDashboard() {
+  const { user } = useAuth();
+  // Helper to handle absolute vs relative URLs
+  const resolveUrl = (u?: string | null) => {
+    if (!u) return '';
+    return u.startsWith('http') ? u : `${API_BASE}${u}`;
+  };
+  // Fallback image getter: prefer p.image, else first of p.images
+  const getProductImage = (p: any): string | null => {
+    if (p?.image) return p.image;
+    if (Array.isArray(p?.images) && p.images.length > 0) return p.images[0];
+    return null;
+  };
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [selectedDistributor, setSelectedDistributor] = useState<string | null>(null);
@@ -66,10 +80,16 @@ export default function ShopDashboard() {
     setAddingToCart(id);
     const qty = stockInput[id] || 1;
     try {
+      // Client-side stock guard using current product list
+      const product = products.find(pp => pp.id === id);
+      if (product && Number(product.stock || 0) <= 0) {
+        toast.error("Sorry, this product is out of stock.");
+        return;
+      }
       await api.orders.addToCart([{ productId: id, qty }]);
-      alert('Product added to cart!');
+      toast.success('Added to cart');
     } catch (err: any) {
-      alert(err.message || 'Failed to add to cart');
+      toast.error(err?.message || 'Failed to add to cart');
     } finally {
       setAddingToCart(null);
     }
@@ -83,7 +103,7 @@ export default function ShopDashboard() {
       <SEO title="Shopkeeper Dashboard • Orderly" description="Browse and order products from trusted distributors." />
       <AppLayout>
         <AppSidebar 
-          items={shopItems} 
+          items={user?.role === 'salesperson' ? salespersonItems : shopItems} 
           cartInfo={
             <div ref={cartIconRef}>
               <span className="text-sm font-medium text-emerald-700">
@@ -204,9 +224,9 @@ export default function ShopDashboard() {
               >
                 <CardContent className="p-0">
                   <div className="aspect-square relative overflow-hidden bg-white">
-                    {p.image ? (
+                    {getProductImage(p) ? (
                       <img 
-                        src={p.image.startsWith('http') ? p.image : `${import.meta.env.VITE_API_BASE || ''}${p.image}`}
+                        src={resolveUrl(getProductImage(p))}
                         alt={p.name} 
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         loading="lazy"
@@ -243,16 +263,20 @@ export default function ShopDashboard() {
                         value={stockInput[p.id] || 1}
                         onChange={e => setStockInput(s => ({ ...s, [p.id]: Math.max(1, Math.min(Number(e.target.value), p.stock)) }))}
                         className="w-16 h-8 text-center mr-2 border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        disabled={addingToCart === p.id}
+                        disabled={addingToCart === p.id || p.stock <= 0}
                         onClick={(e) => e.stopPropagation()}
                       />
                       <Button 
                         size="sm" 
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-8 shadow-sm hover:shadow-md hover:shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60" 
                         onClick={e => { e.stopPropagation(); addToCart(p.id, e); }}
-                        disabled={addingToCart === p.id}
+                        disabled={addingToCart === p.id || p.stock <= 0}
                       >
-                        {addingToCart === p.id ? 'Adding...' : (cart[p.id] ? `In Cart (${cart[p.id]})` : 'Add to Cart')}
+                        {addingToCart === p.id
+                          ? 'Adding...'
+                          : p.stock <= 0
+                            ? 'Out of Stock'
+                            : (cart[p.id] ? `In Cart (${cart[p.id]})` : 'Add to Cart')}
                       </Button>
                     </div>
                   </div>
@@ -266,9 +290,9 @@ export default function ShopDashboard() {
               {selectedProduct && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="aspect-square bg-slate-100 rounded overflow-hidden flex items-center justify-center">
-                    {selectedProduct.image ? (
+                    {getProductImage(selectedProduct) ? (
                       <img
-                        src={selectedProduct.image.startsWith('http') ? selectedProduct.image : `${import.meta.env.VITE_API_BASE || ''}${selectedProduct.image}`}
+                        src={resolveUrl(getProductImage(selectedProduct))}
                         alt={selectedProduct.name}
                         className="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-product.png'; }}
@@ -343,14 +367,14 @@ export default function ShopDashboard() {
                         value={stockInput[selectedProduct.id] || 1}
                         onChange={e => setStockInput(s => ({ ...s, [selectedProduct.id]: Math.max(1, Math.min(Number(e.target.value), selectedProduct.stock)) }))}
                         className="w-20 h-9 text-center border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                        disabled={addingToCart === selectedProduct.id}
+                        disabled={addingToCart === selectedProduct.id || selectedProduct.stock <= 0}
                       />
                       <Button 
                         className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 shadow-sm hover:shadow-md hover:shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60"
                         onClick={(e) => { addToCart(selectedProduct.id, e as any); }}
-                        disabled={addingToCart === selectedProduct.id}
+                        disabled={addingToCart === selectedProduct.id || selectedProduct.stock <= 0}
                       >
-                        {addingToCart === selectedProduct.id ? 'Adding...' : 'Add to Cart'}
+                        {addingToCart === selectedProduct.id ? 'Adding...' : (selectedProduct.stock <= 0 ? 'Out of Stock' : 'Add to Cart')}
                       </Button>
                     </div>
                   </div>

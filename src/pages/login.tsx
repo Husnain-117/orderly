@@ -15,7 +15,7 @@ import { getDashboardPath, isPathAllowedForRole, UserRole } from "@/utils/routes
 const Login = () => {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const [joinAs, setJoinAs] = useState<"distributor" | "shopkeeper" | "">("")
+  const [joinAs, setJoinAs] = useState<"distributor" | "shopkeeper" | "salesperson" | "">("")
   const [rememberMe, setRememberMe] = useState(false)
   // Forgot password state
   const [forgotOpen, setForgotOpen] = useState(false)
@@ -57,7 +57,7 @@ const Login = () => {
 
     setIsLoading(true)
     try {
-      const res = await api.login({ email: username.trim().toLowerCase(), password })
+      const res = await api.login({ email: username.trim().toLowerCase(), password, role: joinAs as 'distributor' | 'shopkeeper' | 'salesperson' })
 
       // Set auth context
       setUser(res.user)
@@ -73,7 +73,13 @@ const Login = () => {
       const target = from && isPathAllowedForRole(from, role) ? from : fallback
       navigate(target, { replace: true })
     } catch (e: any) {
-      toast.error(e?.message || "Login failed")
+      const msg = String(e?.message || '').toLowerCase()
+      if (msg.includes('user_not_found')) return toast.error('No account found with this email')
+      if (msg.includes('invalid_credentials')) return toast.error('Invalid email, password, or role')
+      if (msg.includes('wrong_password')) return toast.error('Incorrect password')
+      if (msg.includes('valid role is required')) return toast.error('Please select a valid role')
+      if (msg.includes('email and password are required')) return toast.error('Email and password are required')
+      toast.error(e?.message || 'Login failed')
     } finally {
       setIsLoading(false)
     }
@@ -182,7 +188,7 @@ const Login = () => {
               <Users className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-600 w-5 h-5 z-10" />
               <Select
                 value={joinAs}
-                onValueChange={(value: "distributor" | "shopkeeper") => setJoinAs(value)}
+                onValueChange={(value: "distributor" | "shopkeeper" | "salesperson") => setJoinAs(value)}
               >
                 <SelectTrigger className="pl-12 h-12 bg-white border border-slate-200 text-slate-800 rounded-lg shadow-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200">
                   <SelectValue placeholder="Join as" />
@@ -190,6 +196,7 @@ const Login = () => {
                 <SelectContent>
                   <SelectItem value="distributor">Distributor</SelectItem>
                   <SelectItem value="shopkeeper">Shopkeeper</SelectItem>
+                  <SelectItem value="salesperson">Salesperson</SelectItem>
                 </SelectContent>
               </Select>
             </div>

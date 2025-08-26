@@ -9,7 +9,9 @@ type SEOProps = {
 
 export const SEO = ({ title, description, canonical = "/", jsonLd }: SEOProps) => {
   useEffect(() => {
-    document.title = title;
+    // Enforce consistent branding in the tab title
+    const siteTitle = "Orderly - B2B";
+    document.title = siteTitle;
 
     if (description) {
       let meta = document.querySelector('meta[name="description"]');

@@ -5,10 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SEO } from '@/components/SEO';
 import { useNavigate } from 'react-router-dom';
-import { AppSidebar, shopItems } from '@/components/layout/AppSidebar';
+import { AppSidebar, shopItems, salespersonItems } from '@/components/layout/AppSidebar';
 import AppLayout from '@/components/layout/AppLayout';
+import { useAuth } from '@/context/AuthContext';
 
 export default function AddToCart() {
+  const { user } = useAuth();
   const [allOrders, setAllOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,7 +87,7 @@ export default function AddToCart() {
   return (
     <AppLayout>
       <SEO title="My Cart - Orderly" description="Review and manage your cart items" />
-      <AppSidebar items={shopItems} />
+      <AppSidebar items={user?.role === 'salesperson' ? salespersonItems : shopItems} />
       <div className="max-w-7xl mx-auto p-6 bg-slate-50 min-h-screen">
         <div className="mb-4">
           <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">My Cart</h1>
@@ -125,6 +127,9 @@ export default function AddToCart() {
                     <div className="text-lg font-semibold text-slate-900">Rs{(order.items.reduce((sum: number, item: any) => sum + (item.price * item.qty), 0)).toFixed(2)}</div>
                   </div>
                 </div>
+                {order.distributorName && (
+                  <div className="mb-2 text-xs text-slate-600">Distributor: <span className="font-medium text-slate-800">{order.distributorName}</span></div>
+                )}
                 <ul className="mb-3 text-sm">
                   {order.items.map((item: any, idx: number) => (
                     <li key={item.productId} className="flex items-center gap-2 py-1">
@@ -150,7 +155,7 @@ export default function AddToCart() {
                 </ul>
                 <div className="flex gap-2">
                   <Button onClick={() => confirmOrder(order.id)} variant="cta" className="bg-emerald-600 hover:bg-emerald-700">
-                    Confirm Order
+                    Confirm Order{order.distributorName ? ` with ${order.distributorName}` : ''}
                   </Button>
                   <Button variant="outline" className="border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300" onClick={() => removeOrder(order.id)}>
                     Remove Entire Order

@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { SEO } from "@/components/SEO";
 import AppLayout from "@/components/layout/AppLayout";
 import { AppSidebar, wholesaleItems } from "@/components/layout/AppSidebar";
-import { Package, ShoppingCart, Users } from "lucide-react";
+import { Package, ShoppingCart, Users, UserCheck } from "lucide-react";
 import { api } from "@/lib/api";
 
 const DistributorDashboard: React.FC = () => {
@@ -20,8 +20,14 @@ const DistributorDashboard: React.FC = () => {
     queryFn: () => api.products.list(),
   });
 
+  const { data: salesReqData, isLoading: loadingSalesReqs } = useQuery({
+    queryKey: ["distributor", "sales-requests", { scope: "dashboard" }],
+    queryFn: () => api.distributor.salesRequests(),
+  });
+
   const orders = ordersData?.orders ?? [];
   const products = productsData?.products ?? [];
+  const salesRequests = salesReqData?.requests ?? [];
 
   // Status counts (based on currently fetched orders page)
   const totalOrders = orders.length;
@@ -33,6 +39,7 @@ const DistributorDashboard: React.FC = () => {
     { label: "Pending confirmations", value: loadingOrders ? "…" : pendingConfirmations, icon: Users, color: "text-amber-600" },
     { label: "SKUs in inventory", value: loadingProducts ? "…" : products.length, icon: Package, color: "text-blue-600" },
     { label: "Accepted (recent)", value: loadingOrders ? "…" : accepted, icon: ShoppingCart, color: "text-emerald-700" },
+    { label: "Salesperson requests", value: loadingSalesReqs ? "…" : salesRequests.filter((r: any) => r.status === 'pending').length, icon: UserCheck, color: "text-purple-700" },
   ];
 
   return (
@@ -86,6 +93,12 @@ const DistributorDashboard: React.FC = () => {
                   <Button variant="outline" className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50">
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     View Orders
+                  </Button>
+                </Link>
+                <Link to="/wholesale/sales-requests" className="block">
+                  <Button variant="secondary" className="w-full">
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Manage Salesperson Requests
                   </Button>
                 </Link>
               </CardContent>

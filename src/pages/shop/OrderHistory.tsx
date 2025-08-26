@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import AppLayout from "@/components/layout/AppLayout";
-import { AppSidebar, shopItems } from "@/components/layout/AppSidebar";
+import { AppSidebar, shopItems, salespersonItems } from "@/components/layout/AppSidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SEO } from "@/components/SEO";
 import { Clock, Package, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from '@/hooks/use-toast';
 
 // Only expose the statuses we want the user to filter by
 const statuses = ["Pending", "Placed", "Delivered"] as const;
@@ -73,6 +76,8 @@ import {
 } from '@/components/ui/dialog';
 
 export default function OrderHistory() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("");
   const { data, isLoading, error } = useQuery({
     queryKey: ['my-orders'],
@@ -135,11 +140,63 @@ const statusCounts = useMemo(() => {
   return base as Record<"All" | typeof statuses[number], number>;
 }, [normalizedOrders]);
 
+  // Reorder handler
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  async function handleViewInvoice(orderId: string) {
+    try {
+      const res = await api.orders.getInvoiceHtml(orderId);
+      const html = res?.html || '<p>Failed to load invoice</p>';
+      const w = window.open('', '_blank');
+      if (w) {
+        w.document.open();
+        w.document.write(`<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head><body style=\"margin:0;padding:16px;background:#f8fafc\">${html}</body></html>`);
+        w.document.close();
+      } else {
+        toast({ title: 'Popup blocked', description: 'Allow popups to view the invoice.', variant: 'destructive' as any });
+      }
+    } catch (err: any) {
+      toast({ title: 'Failed to open invoice', description: err?.message || 'Please try again.', variant: 'destructive' as any });
+    }
+  }
+  async function handleDownloadInvoice(orderId: string) {
+    try {
+      await api.orders.downloadInvoicePdf(orderId);
+    } catch (err: any) {
+      toast({ title: 'Download failed', description: err?.message || 'Please try again.', variant: 'destructive' as any });
+    }
+  }
+  async function handleReorder(o: any) {
+    try {
+      if (!Array.isArray(o?.items) || o.items.length === 0) {
+        toast({ title: 'No items to reorder', description: 'This order has no items.', variant: 'destructive' as any });
+        return;
+      }
+      // If there are existing pending orders, confirm merge/replace intent
+      const hasPending = (data?.orders || []).some((ord: any) => String(ord.status).toLowerCase() === 'pending');
+      if (hasPending) {
+        const ok = window.confirm('You already have items in your cart. Reordering will merge quantities for matching products. Continue?');
+        if (!ok) return;
+      }
+
+      const items = o.items.map((it: any) => ({ productId: it.productId, qty: Number(it.qty || 1) }));
+      setReorderingId(o.id);
+      await api.orders.addToCart(items);
+      toast({ title: 'Added to cart', description: 'Previous order items were added to your cart.' });
+      // Navigate to appropriate cart
+      const cartPath = user?.role === 'salesperson' ? '/sales/cart' : '/shop/cart';
+      navigate(cartPath);
+    } catch (err: any) {
+      toast({ title: 'Failed to reorder', description: err?.message || 'Please try again.', variant: 'destructive' as any });
+    } finally {
+      setReorderingId(null);
+    }
+  }
+
   return (
     <>
       <SEO title="Order History • Orderly" description="Track and reorder from your purchase history." />
       <AppLayout>
-        <AppSidebar items={shopItems} />
+        <AppSidebar items={user?.role === 'salesperson' ? salespersonItems : shopItems} />
         <main className="w-full max-w-7xl mx-auto px-6 py-6 bg-slate-50 min-h-screen">
           {/* Loading/Error/Empty States */}
           {isLoading && (
@@ -304,6 +361,24 @@ const statusCounts = useMemo(() => {
                             )}
                           </div>
                           <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-all duration-200"
+                              onClick={() => handleViewInvoice(o.id)}
+                              title="View invoice"
+                            >
+                              View invoice
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300 transition-all duration-200"
+                              onClick={() => handleDownloadInvoice(o.id)}
+                              title="Download invoice PDF"
+                            >
+                              Download PDF
+                            </Button>
                             <Dialog>
                               <DialogTrigger asChild>
                                 <Button
@@ -401,6 +476,16 @@ const statusCounts = useMemo(() => {
                                 </DialogClose>
                               </DialogContent>
                             </Dialog>
+                            <Button
+                              size="sm"
+                              variant="cta"
+                              disabled={reorderingId === o.id}
+                              className="bg-emerald-600 text-white hover:bg-emerald-700"
+                              onClick={() => handleReorder(o)}
+                              title="Reorder these items"
+                            >
+                              {reorderingId === o.id ? 'Reordering...' : 'Reorder'}
+                            </Button>
                           </div>
                         </div>
                       </div>

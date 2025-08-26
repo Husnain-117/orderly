@@ -19,6 +19,11 @@ export default function OrdersManagement() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [invoiceHtml, setInvoiceHtml] = useState<string>("");
+  const [invoiceLoading, setInvoiceLoading] = useState<boolean>(false);
+  const [emailTo, setEmailTo] = useState<string>("");
+  const [sendingInvoice, setSendingInvoice] = useState<boolean>(false);
+  const [invoiceMsg, setInvoiceMsg] = useState<string>("");
 
   const toStatusCode = (s: string) => {
     const map: Record<string, string> = {
@@ -441,7 +446,82 @@ export default function OrdersManagement() {
                   {updating === active?.id ? 'Updating…' : 'Mark Delivered'}
                 </Button>
               )}
+              {/* Invoice Actions */}
+              <Button
+                variant="outline"
+                disabled={invoiceLoading || !active?.id}
+                onClick={async () => {
+                  if (!active?.id) return;
+                  try {
+                    setInvoiceMsg("");
+                    setInvoiceLoading(true);
+                    const res = await api.orders.getInvoiceHtml(active.id);
+                    setInvoiceHtml(res.html || "");
+                  } catch (e: any) {
+                    setInvoiceMsg(e.message || 'Failed to load invoice');
+                    setInvoiceHtml("");
+                  } finally {
+                    setInvoiceLoading(false);
+                  }
+                }}
+              >
+                {invoiceLoading ? 'Loading Invoice…' : 'Preview Invoice'}
+              </Button>
             </div>
+            {/* Invoice Preview & Send */}
+            {(invoiceHtml || invoiceLoading || invoiceMsg) && (
+              <div className="mt-4 border rounded-md">
+                <div className="p-3 border-b flex items-center justify-between">
+                  <div className="text-sm font-semibold">Invoice Preview</div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setInvoiceHtml(""); setInvoiceMsg(""); }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+                <div className="p-3 space-y-3">
+                  {!!invoiceMsg && (
+                    <div className="text-xs text-destructive">{invoiceMsg}</div>
+                  )}
+                  {invoiceLoading && (
+                    <div className="text-sm text-muted-foreground">Generating invoice…</div>
+                  )}
+                  {!!invoiceHtml && (
+                    <div className="max-h-[400px] overflow-auto rounded bg-white border">
+                      <div dangerouslySetInnerHTML={{ __html: invoiceHtml }} />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Recipient email"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      className="max-w-sm"
+                    />
+                    <Button
+                      disabled={sendingInvoice || !active?.id}
+                      onClick={async () => {
+                        if (!active?.id) return;
+                        try {
+                          setInvoiceMsg("");
+                          setSendingInvoice(true);
+                          const res = await api.orders.sendInvoiceEmail(active.id, emailTo ? { to: emailTo } : undefined);
+                          setInvoiceMsg(`Sent to ${res.to}`);
+                        } catch (e: any) {
+                          setInvoiceMsg(e.message || 'Failed to send invoice');
+                        } finally {
+                          setSendingInvoice(false);
+                        }
+                      }}
+                    >
+                      {sendingInvoice ? 'Sending…' : 'Send Invoice Email'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </DrawerContent>
       </Drawer>

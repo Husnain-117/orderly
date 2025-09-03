@@ -27,7 +27,7 @@ export const AppSidebar = ({ items, cartInfo }: { items: NavItem[]; cartInfo?: R
           <div className="flex items-center gap-1">
             {items.filter(item => item.url !== '#').map((item) => (
               <NavLink 
-                key={item.title}
+                key={item.url}
                 to={item.url} 
                 end 
                 className={({ isActive }) => 

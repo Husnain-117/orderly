@@ -1,5 +1,28 @@
-// In production on Vercel, default to same-origin '/api' so rewrites route to serverless backend without CORS
-export const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '');
+// Compute API base
+// - Default to same-origin '/api' (works with Vite proxy and Vercel rewrites)
+// - If VITE_API_BASE points to a local backend like 'http://localhost:4000', ensure '/api' suffix
+function computeApiBase(): string {
+  const raw = (import.meta.env.VITE_API_BASE || '/api').trim();
+  // If relative path, just normalize trailing slash
+  if (raw.startsWith('/')) return raw.replace(/\/+$/, '') || '/api';
+
+  // If absolute URL, append '/api' for common local setups when missing
+  try {
+    const u = new URL(raw);
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(u.hostname) || /^192\.168\.\d+\.\d+$/.test(u.hostname);
+    const missingApiPath = !u.pathname || u.pathname === '/' || u.pathname === '';
+    if (isLocalHost && missingApiPath) {
+      u.pathname = '/api';
+      return u.toString().replace(/\/+$/, '');
+    }
+    return raw.replace(/\/+$/, '');
+  } catch {
+    // Fallback to default if URL parsing fails
+    return '/api';
+  }
+}
+
+export const API_BASE = computeApiBase();
 
 function joinUrl(path: string): string {
   if (!path) return API_BASE;

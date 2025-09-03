@@ -3,6 +3,8 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import AppLayout from "@/components/layout/AppLayout";
+import { AppSidebar, wholesaleItems } from "@/components/layout/AppSidebar";
 
 export default function SalesRequests() {
   const qc = useQueryClient();
@@ -45,7 +47,9 @@ export default function SalesRequests() {
   const salespersons = members?.salespersons || [];
 
   return (
-    <div className="container mx-auto max-w-4xl p-4">
+    <AppLayout>
+      <AppSidebar items={wholesaleItems} />
+      <main className="w-full max-w-7xl mx-auto px-6 py-6 bg-slate-50 min-h-screen">
       <Card>
         <CardHeader>
           <CardTitle>Salesperson Link Requests</CardTitle>
@@ -104,6 +108,7 @@ export default function SalesRequests() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </main>
+    </AppLayout>
   );
 }

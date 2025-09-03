@@ -37,7 +37,11 @@ const Inventory: React.FC = () => {
   // Helper: resolve absolute vs relative URLs
   const resolveUrl = React.useCallback((u?: string | null) => {
     if (!u) return "";
-    return u.startsWith("http") ? u : `${API_BASE}${u}`;
+    if (u.startsWith("http")) return u;
+    // If backend already returns an absolute path like "/api/uploads/...", use it as-is
+    if (u.startsWith("/")) return u;
+    // Otherwise treat as relative path and prefix with API base
+    return `${API_BASE}${u.startsWith('/') ? '' : '/'}${u}`;
   }, []);
 
   // Products from backend

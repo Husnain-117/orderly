@@ -6,7 +6,7 @@
   "rewrites": [
     { 
       "source": "/api/(.*)", 
-      "destination": "https://orderly-backend-three.vercel.app/$1"
+      "destination": "https://orderly-backend-three.vercel.app/api/$1"
     },
     { 
       "source": "/(.*)", 

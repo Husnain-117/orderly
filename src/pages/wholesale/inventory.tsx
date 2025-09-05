@@ -22,12 +22,7 @@ interface Product { id: string; name: string; price: number; stock: number; imag
 
 const Inventory: React.FC = () => {
   // Keep CSV section state UNCHANGED as requested
-  const [csvItems, setCsvItems] = React.useState<CsvItem[]>([
-    { sku: "SKU-1001", name: "Sunrise Tea 250g", stock: 120, price: 85 },
-    { sku: "SKU-1002", name: "Refined Sugar 1kg", stock: 80, price: 44 },
-    { sku: "SKU-1003", name: "Premium Rice 5kg", stock: 45, price: 320 },
-    { sku: "SKU-1004", name: "Organic Honey 500g", stock: 25, price: 180 },
-  ]);
+  const [csvItems, setCsvItems] = React.useState<CsvItem[]>([]);
   const [csvImportedOnce, setCsvImportedOnce] = React.useState(false);
   const [csvParsing, setCsvParsing] = React.useState(false);
   const { toast } = useToast();
@@ -83,6 +78,12 @@ const Inventory: React.FC = () => {
     image: "",
     description: "",
   });
+  // Helpers to normalize/round values
+  const toNearestTen = React.useCallback((n: number) => {
+    if (!isFinite(n)) return 0;
+    if (n <= 0) return 0;
+    return Math.round(n / 10) * 10;
+  }, []);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const onImageFile = async (file?: File | null) => {
     if (!file) return;
@@ -231,6 +232,58 @@ const Inventory: React.FC = () => {
                   className="block w-full rounded-lg border border-slate-200 p-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200"
                 />
                 {csvParsing && <p className="mt-3 text-sm text-slate-500">Parsing CSV…</p>}
+                {/* Inline CSV Preview (scrollable) */}
+                {csvItems.length > 0 && (
+                  <div className="mt-4 border border-slate-200 rounded-lg bg-white">
+                    <div className="flex items-center justify-between p-3">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">Imported Items Preview</div>
+                        <div className="text-xs text-slate-500">{csvItems.length} item(s) parsed. Review and import.</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          const payload = csvItems
+                            .map((r) => ({ name: r.name, price: Number(r.price) || 0, stock: Number(r.stock) || 0 }))
+                            .filter((p) => p.name && p.price > 0);
+                          if (!payload.length) {
+                            toast({ title: 'Nothing to import', description: 'Ensure rows have valid name and price.', variant: 'destructive' });
+                            return;
+                          }
+                          bulkMutation.mutate({ products: payload });
+                        }}
+                        disabled={bulkMutation.isPending}
+                      >
+                        {bulkMutation.isPending ? 'Importing…' : 'Import to Products'}
+                      </Button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-slate-200 bg-white/60 sticky top-0">
+                            <TableHead className="font-semibold text-slate-700">SKU</TableHead>
+                            <TableHead className="font-semibold text-slate-700">Product Name</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-700">Stock</TableHead>
+                            <TableHead className="text-right font-semibold text-slate-700">Price</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {csvItems.map((item) => (
+                            <TableRow key={`${item.sku}-${item.name}`} className="border-slate-100">
+                              <TableCell className="font-medium text-slate-800 whitespace-nowrap">{item.sku}</TableCell>
+                              <TableCell className="text-slate-700">
+                                <div className="font-medium text-slate-900">{item.name}</div>
+                              </TableCell>
+                              <TableCell className="text-right text-slate-800 whitespace-nowrap">{item.stock}</TableCell>
+                              <TableCell className="text-right text-slate-800 whitespace-nowrap">Rs{Number(item.price || 0).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
                 {csvImportedOnce && csvItems.length === 0 && (
                   <p className="mt-3 text-sm text-slate-500">No new products from CSV</p>
                 )}
@@ -262,11 +315,17 @@ const Inventory: React.FC = () => {
                       id="price"
                       type="number"
                       min="0"
-                      step="0.01"
-                      value={draft.price}
-                      onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })}
+                      step="10"
+                      inputMode="numeric"
+                      value={draft.price || ''}
+                      onFocus={(e) => { e.currentTarget.select(); if ((e.currentTarget.value || '') === '0') { e.currentTarget.value = ''; } }}
+                      onChange={(e) => {
+                        const raw = Number(e.target.value);
+                        setDraft({ ...draft, price: isNaN(raw) ? 0 : raw });
+                      }}
+                      onBlur={(e) => { if ((e.currentTarget.value || '').trim() === '') { setDraft({ ...draft, price: 0 }); } }}
                       className="mt-1 border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                      placeholder="0.00"
+                      placeholder="0"
                     />
                   </div>
                   <div>
@@ -275,8 +334,11 @@ const Inventory: React.FC = () => {
                       id="stock"
                       type="number"
                       min="0"
+                      step="1"
+                      inputMode="numeric"
                       value={draft.stock}
-                      onChange={(e) => setDraft({ ...draft, stock: Number(e.target.value) })}
+                      onFocus={(e) => { e.currentTarget.select(); }}
+                      onChange={(e) => setDraft({ ...draft, stock: Math.max(0, Math.floor(Number(e.target.value || '0'))) })}
                       className="mt-1 border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                       placeholder="0"
                     />
@@ -364,15 +426,32 @@ const Inventory: React.FC = () => {
                               {editingId === p.id ? (
                                 <Input value={editDraft.name as string} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} />
                               ) : (
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-slate-900">{p.name}</span>
-                                  <span className="text-[10px] text-slate-500 font-mono">ID: {p.id}</span>
+                                <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 shrink-0 rounded border border-slate-200 bg-white overflow-hidden flex items-center justify-center">
+                                    {p.image ? (
+                                      <img src={resolveUrl(p.image)} alt={p.name} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <Package className="w-5 h-5 text-slate-400" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-slate-900 break-words leading-snug">{p.name}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">ID: {p.id}</div>
+                                  </div>
                                 </div>
                               )}
                             </TableCell>
                             <TableCell className={`text-right font-medium ${p.stock < 30 ? 'text-amber-600' : 'text-slate-800'}` }>
                               {editingId === p.id ? (
-                                <Input type="number" value={Number(editDraft.stock ?? p.stock)} onChange={(e) => setEditDraft({ ...editDraft, stock: Number(e.target.value) })} />
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  inputMode="numeric"
+                                  value={Number(editDraft.stock ?? p.stock)}
+                                  onFocus={(e) => { e.currentTarget.select(); }}
+                                  onChange={(e) => setEditDraft({ ...editDraft, stock: Math.max(0, Math.floor(Number(e.target.value || '0'))) })}
+                                />
                               ) : (
                                 <span>
                                   {p.stock}
@@ -382,9 +461,18 @@ const Inventory: React.FC = () => {
                             </TableCell>
                             <TableCell className="text-right font-medium text-slate-800">
                               {editingId === p.id ? (
-                                <Input type="number" step="0.01" value={Number(editDraft.price ?? p.price)} onChange={(e) => setEditDraft({ ...editDraft, price: Number(e.target.value) })} />
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="10"
+                                  inputMode="numeric"
+                                  value={Number(editDraft.price ?? p.price) || ''}
+                                  onFocus={(e) => { e.currentTarget.select(); if ((e.currentTarget.value || '') === '0') { e.currentTarget.value = ''; } }}
+                                  onChange={(e) => setEditDraft({ ...editDraft, price: Number(e.target.value) })}
+                                  onBlur={(e) => { if ((e.currentTarget.value || '').trim() === '') { setEditDraft({ ...editDraft, price: 0 as any }); } }}
+                                />
                               ) : (
-                                <span className="text-slate-900">Rs{p.price.toFixed(2)}</span>
+                                <span className="text-slate-900">Rs{Number(p.price).toFixed(0)}</span>
                               )}
                             </TableCell>
                             <TableCell className="text-slate-700 min-w-40">
@@ -458,8 +546,8 @@ const Inventory: React.FC = () => {
             </Card>
           </section>
 
-          {/* CSV Imported Items Preview (unchanged data) */}
-          {csvItems.length > 0 && (
+          {/* CSV Imported Items Preview (bottom) hidden intentionally; use the inline preview above */}
+          {false && csvItems.length > 0 && (
             <section className="mt-8">
               <Card className="border-slate-200">
                 <CardHeader>
@@ -530,10 +618,10 @@ const Inventory: React.FC = () => {
           )}
           {/* Product Detail Dialog */}
           <Dialog open={!!selectedProduct} onOpenChange={(o) => { if (!o) setSelectedProduct(null); }}>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="sm:max-w-3xl">
               {selectedProduct && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="aspect-square bg-white border border-slate-200 rounded overflow-hidden flex items-center justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="aspect-square bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
                     {selectedProduct.image ? (
                       <img
                         src={resolveUrl(selectedProduct.image)}
@@ -542,17 +630,17 @@ const Inventory: React.FC = () => {
                         onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-product.png'; }}
                       />
                     ) : (
-                      <Package className="w-12 h-12 text-slate-400" />
+                      <Package className="w-16 h-16 text-slate-400" />
                     )}
                   </div>
                   <div>
                     <DialogHeader>
-                      <DialogTitle className="text-slate-900">{selectedProduct.name}</DialogTitle>
+                      <DialogTitle className="text-slate-900 text-2xl font-semibold leading-snug">{selectedProduct.name}</DialogTitle>
                       <DialogDescription className="text-slate-600">Product details</DialogDescription>
                     </DialogHeader>
                     <div className="mt-3 space-y-2">
-                      <div className="text-xl font-semibold text-slate-900">Rs{Number(selectedProduct.price).toFixed(2)}</div>
-                      <div className="text-xs text-slate-500">Stock: {selectedProduct.stock}</div>
+                      <div className="text-2xl font-semibold text-slate-900">Rs{Number(selectedProduct.price).toFixed(0)}</div>
+                      <div className="text-sm text-slate-500">Stock: {selectedProduct.stock}</div>
                       {selectedProduct.description && (
                         <p className="text-sm text-slate-700 mt-2 whitespace-pre-line">{selectedProduct.description}</p>
                       )}
